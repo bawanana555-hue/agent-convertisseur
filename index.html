@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mini-Agent Convertisseur JSON v4 — Transfert & Prévisualisation</title>
+<style>
+  :root{
+    --bg:#f5f7fa; --panel:#ffffff; --panel2:#f9fafb;
+    --border:#d0d7de; --border-strong:#8c959f;
+    --txt:#1f2328; --muted:#656d76;
+    --primary:#1f883d; --primary-h:#1a7f37;
+    --purple:#8250df; --blue:#0969da; --indigo:#6f42c1;
+    --red:#cf222e; --orange:#bc4c00; --green:#238636;
+    --shadow:0 1px 3px rgba(0,0,0,.08);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;padding:20px;line-height:1.5;font-size:14px}
+  .app{max-width:1400px;margin:0 auto}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px;background:var(--panel);border:1px solid var(--border);border-radius:12px;margin-bottom:16px;box-shadow:var(--shadow)}
+  header h1{font-size:1.1rem;display:flex;align-items:center;gap:10px;color:var(--txt)}
+  header h1 .dot{width:10px;height:10px;border-radius:50%;background:var(--primary);animation:pulse 2s infinite}
+  @keyframes pulse{50%{opacity:.4}}
+  .tabs{display:flex;gap:10px;border-bottom:1px solid var(--border);margin-bottom:16px;flex-wrap:wrap}
+  .tab-btn{padding:12px 16px;background:none;border:none;border-bottom:3px solid transparent;cursor:pointer;font-weight:600;color:var(--muted);transition:.2s}
+  .tab-btn.active{border-bottom-color:var(--primary);color:var(--primary)}
+  .tab-btn:hover{color:var(--txt)}
+  .tab-content{display:none}
+  .tab-content.active{display:block}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:var(--shadow)}
+  .panel h2{font-size:.75rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:16px;font-weight:700;padding-bottom:10px;border-bottom:1px solid var(--border)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}
+  label{display:block;font-size:.78rem;color:var(--muted);margin-bottom:6px;font-weight:600}
+  select,input[type=file],input[type=text],input[type=search],input[type=url]{width:100%;padding:10px 12px;background:var(--panel);border:1px solid var(--border-strong);border-radius:8px;color:var(--txt);font-size:.9rem;outline:none;transition:.15s}
+  select:focus,input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(9,105,218,.15)}
+  button{font-family:inherit;font-size:.88rem;font-weight:600;padding:10px 16px;border-radius:8px;border:1px solid var(--border-strong);background:var(--panel);color:var(--txt);cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:8px}
+  button:hover:not(:disabled){background:var(--panel2);border-color:var(--txt)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .btn-primary{background:var(--primary);border-color:var(--primary);color:#fff}
+  .btn-primary:hover:not(:disabled){background:var(--primary-h)}
+  .btn-purple{background:var(--purple);border-color:var(--purple);color:#fff}
+  .btn-purple:hover:not(:disabled){background:#6e40c9}
+  .btn-blue{background:var(--blue);border-color:var(--blue);color:#fff}
+  .btn-blue:hover:not(:disabled){background:#0860ca}
+  .btn-indigo{background:var(--indigo);border-color:var(--indigo);color:#fff}
+  .btn-indigo:hover:not(:disabled){background:#5a32a3}
+  .btn-success{background:var(--green);border-color:var(--green);color:#fff}
+  .btn-success:hover:not(:disabled){background:#1a7f37}
+  .btn-danger{background:var(--panel);border-color:var(--red);color:var(--red)}
+  .btn-danger:hover:not(:disabled){background:var(--red);color:#fff}
+  .btn-sm{padding:6px 10px;font-size:.78rem}
+  .btn-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+  .icon-btn{width:38px;height:38px;border-radius:8px;border:1px solid var(--border-strong);background:var(--panel);color:var(--txt);cursor:pointer;font-size:1rem;font-weight:600;display:inline-flex;align-items:center;justify-content:center;transition:.15s;padding:0}
+  .icon-btn:hover{background:var(--panel2);border-color:var(--primary);color:var(--primary)}
+  .dropzone{border:2px dashed var(--border-strong);border-radius:10px;padding:26px 20px;text-align:center;cursor:pointer;transition:.15s;background:var(--panel2);margin-bottom:14px}
+  .dropzone:hover,.dropzone.drag{border-color:var(--purple);background:#f3ebff}
+  .search-bar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+  .resource-list{display:flex;flex-direction:column;gap:10px;max-height:600px;overflow-y:auto}
+  .resource-item{display:grid;grid-template-columns:auto 1fr auto auto;gap:12px;align-items:center;padding:12px 14px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;transition:.15s}
+  .resource-item:hover{border-color:var(--blue);background:#f0f7ff}
+  .resource-item .ico{font-size:1.5rem;width:40px;text-align:center}
+  .resource-item .meta{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+  .resource-item .title{font-weight:600;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .resource-item .sub{font-size:.72rem;color:var(--muted)}
+  .resource-item .actions{display:flex;gap:6px}
+  .resource-item .badge{font-size:.68rem;padding:3px 9px;border-radius:20px;font-weight:700}
+  .badge.epub{background:#e8f0ff;color:#0969da;border:1px solid #a8d8ff}
+  .badge.mobi{background:#f0e8ff;color:#6f42c1;border:1px solid #d8a8ff}
+  .badge.djvu{background:#ffe8f0;color:#cf222e;border:1px solid #ffb3cc}
+  .badge.pdf{background:#fff5d6;color:#9a6700;border:1px solid #efd88b}
+  .badge.quran{background:#dafbe1;color:#1a7f37;border:1px solid #a2d8b2}
+  .badge.audio{background:#ddf4ff;color:#0969da;border:1px solid #a8d8ff}
+  .badge.video{background:#eae2ff;color:#6639ba;border:1px solid #c9b7f0}
+  .transfer-status{display:inline-block;font-size:.65rem;padding:2px 8px;border-radius:12px;margin-left:6px;font-weight:700}
+  .transfer-status.pending{background:#fff5d6;color:#9a6700}
+  .transfer-status.transferred{background:#dafbe1;color:#1a7f37}
+  .transfer-status.failed{background:#ffe8e8;color:#cf222e}
+  .empty{text-align:center;padding:32px;color:var(--muted);font-size:.88rem;border:1px dashed var(--border-strong);border-radius:8px;background:var(--panel2)}
+  .modal{display:none;position:fixed;inset:0;background:rgba(31,35,40,.6);z-index:100;align-items:center;justify-content:center;padding:20px}
+  .modal.open{display:flex}
+  .modal-box{background:var(--panel);border:1px solid var(--border);border-radius:14px;max-width:900px;width:100%;max-height:88vh;overflow-y:auto;padding:26px;position:relative;animation:pop .2s ease}
+  @keyframes pop{from{transform:scale(.96);opacity:0}}
+  .modal-box h3{font-size:1.15rem;margin-bottom:16px;color:var(--primary)}
+  .modal-box h4{margin:16px 0 8px;font-size:.95rem;color:var(--orange)}
+  .close-x{position:absolute;top:14px;right:14px;width:34px;height:34px;cursor:pointer;border:none;background:none;font-size:1.2rem;color:var(--muted)}
+  .close-x:hover{color:var(--txt)}
+  .preview-content{margin-top:16px;border:1px solid var(--border);border-radius:8px;padding:14px;background:#f9fafb;max-height:500px;overflow-y:auto}
+  .preview-video{width:100%;border-radius:8px;background:#000}
+  .preview-audio{width:100%;border-radius:8px;background:#f0f0f0;padding:10px;display:block}
+  .preview-pdf,.preview-djvu{width:100%;height:400px;border-radius:8px;border:1px solid var(--border)}
+  .preview-text{font-family:'Consolas',monospace;font-size:.8rem;white-space:pre-wrap;word-wrap:break-word}
+  .preview-error{padding:20px;text-align:center;color:#cf222e}
+  #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--txt);color:#fff;padding:12px 22px;border-radius:10px;font-size:.86rem;z-index:200;opacity:0;transition:.3s;box-shadow:0 8px 24px rgba(0,0,0,.25);max-width:90vw}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  #toast.err{background:var(--red)}
+  #toast.success{background:var(--green)}
+  .spinner{width:15px;height:15px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .transfer-log{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:.75rem;font-family:monospace;color:var(--muted);max-height:200px;overflow-y:auto;margin-top:10px}
+  .transfer-log .ok{color:var(--green)}
+  .transfer-log .err{color:var(--red)}
+  .progress-bar{width:100%;height:6px;background:var(--border);border-radius:3px;margin:8px 0;overflow:hidden}
+  .progress-bar .fill{height:100%;background:var(--primary);transition:width .3s;width:0}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <h1><span class="dot"></span> Mini-Agent Convertisseur JSON v4</h1>
+    <button class="icon-btn" id="btnGuide" title="Guide">?</button>
+  </header>
+
+  <!-- ONGLETS PRINCIPAUX -->
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="converter">🔄 Convertisseur</button>
+    <button class="tab-btn" data-tab="biblio">📚 Biblio</button>
+    <button class="tab-btn" data-tab="transfer">🚀 Transfert</button>
+    <button class="tab-btn" data-tab="bookmarks">🔖 Marque-pages</button>
+  </div>
+
+  <!-- TAB 1: CONVERTISSEUR + PRÉVISUALISATION -->
+  <div class="tab-content active" id="tab-converter">
+
+    <section class="panel">
+      <h2>① Conversion Coran</h2>
+      <div class="grid">
+        <div>
+          <label for="selSurah">Sourate</label>
+          <select id="selSurah"></select>
+        </div>
+        <div>
+          <label for="selLang">Langue</label>
+          <select id="selLang">
+            <option value="fr.hamidullah">🇫🇷 Français</option>
+            <option value="en.sahih">🇬🇧 Anglais</option>
+          </select>
+        </div>
+        <div>
+          <label for="selReciter">Récitateur</label>
+          <select id="selReciter">
+            <option value="ar.alafasy">Mishary Alafasy</option>
+            <option value="ar.abdulbasitmurattal">Abdul Basit</option>
+          </select>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn-primary" id="btnConvert">⚡ Convertir et ajouter</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>② Ressources académiques (Formats patrimoniaux)</h2>
+      <div class="dropzone" id="dropzone">
+        <div style="font-size:1.8rem;margin-bottom:8px">📄 🎵 🎬 📚 ⛓️</div>
+        <div style="font-size:.88rem;color:#656d76">
+          Glissez-déposez vos fichiers ou <b>cliquez</b>
+        </div>
+        <div style="font-size:.75rem;color:#656d76;margin-top:6px">
+          📄 PDF · DOCX · TXT | 📚 EPUB · MOBI · AZW · DjVu | 🎵 MP3 · FLAC | 🎬 MP4 · WEBM
+        </div>
+        <input type="file" id="mediaInput" accept=".pdf,.docx,.txt,.epub,.mobi,.azw,.djvu,.mp3,.wav,.m4a,.flac,.ogg,.mp4,.webm" multiple hidden>
+      </div>
+      <div class="resource-list" id="mediaList"></div>
+      <div class="btn-row" id="mediaActions" style="display:none">
+        <button class="btn-purple" id="btnAddMedia">➕ Ajouter à la biblio</button>
+        <button id="btnClearMedia">✕ Vider</button>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- TAB 2: BIBLIO PARTAGÉE -->
+  <div class="tab-content" id="tab-biblio">
+
+    <section class="panel">
+      <h2>③ Biblio partagée — <span id="biblioCount">0</span> élément(s)</h2>
+      <div class="search-bar">
+        <input type="search" id="searchInput" placeholder="🔍 Rechercher...">
+        <select id="filterType">
+          <option value="">Tous</option>
+          <option value="quran">📖 Coran</option>
+          <option value="epub">📕 EPUB</option>
+          <option value="pdf">📄 PDF</option>
+          <option value="audio">🎵 Audio</option>
+          <option value="video">🎬 Vidéo</option>
+        </select>
+      </div>
+      <div class="resource-list" id="biblioList"></div>
+      <div class="btn-row" style="margin-top:14px">
+        <button class="btn-blue" id="btnImport">📥 Importer JSON</button>
+        <button class="btn-primary" id="btnExport">📤 Exporter JSON</button>
+        <button class="btn-danger" id="btnClear">🗑 Vider</button>
+        <input type="file" id="fileInput" accept=".json" hidden>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- TAB 3: TRANSFERT VERS AGENT PRINCIPAL -->
+  <div class="tab-content" id="tab-transfer">
+
+    <section class="panel">
+      <h2>🚀 Transfert vers l'agent principal</h2>
+      
+      <div style="display:grid;grid-template-columns:1fr auto;gap:14px;align-items:end;margin-bottom:14px">
+        <div>
+          <label for="agentURL">URL de l'agent principal :</label>
+          <input type="url" id="agentURL" placeholder="http://localhost:8000" value="http://localhost:8000">
+        </div>
+        <button class="btn-blue" id="btnTestAgent">🔗 Tester connexion</button>
+      </div>
+
+      <div class="panel" style="background:#f0f7ff;border-color:#a8d8ff">
+        <h4 style="margin:0 0 10px;font-size:.85rem;color:#0969da">📊 État du transfert</h4>
+        <div id="transferStats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;font-size:.82rem">
+          <div>
+            <span style="color:var(--muted)">Ressources locales</span>
+            <div style="font-size:1.3rem;font-weight:700;color:var(--primary)" id="statLocal">0</div>
+          </div>
+          <div>
+            <span style="color:var(--muted)">Transférées</span>
+            <div style="font-size:1.3rem;font-weight:700;color:var(--green)" id="statTransferred">0</div>
+          </div>
+          <div>
+            <span style="color:var(--muted)">En attente</span>
+            <div style="font-size:1.3rem;font-weight:700;color:var(--orange)" id="statPending">0</div>
+          </div>
+          <div>
+            <span style="color:var(--muted)">Erreurs</span>
+            <div style="font-size:1.3rem;font-weight:700;color:var(--red)" id="statErrors">0</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-row" style="margin-top:14px">
+        <button class="btn-success" id="btnTransferAll">🚀 Transférer tout</button>
+        <button class="btn-purple" id="btnTransferSelected">📤 Transférer sélectionnés</button>
+        <button id="btnSyncBack">⬅️ Synchroniser depuis agent</button>
+      </div>
+
+      <div class="transfer-log" id="transferLog"></div>
+    </section>
+
+  </div>
+
+  <!-- TAB 4: MARQUE-PAGES -->
+  <div class="tab-content" id="tab-bookmarks">
+
+    <section class="panel">
+      <h2>🔖 Marque-pages / Pages enregistrées</h2>
+      <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+        <input type="url" id="bookmarkURL" placeholder="https://exemple.com" style="flex:1;min-width:200px">
+        <input type="text" id="bookmarkTitle" placeholder="Titre (optionnel)" style="flex:1;min-width:150px">
+        <button class="btn-primary btn-sm" id="btnAddBookmark">➕ Ajouter</button>
+      </div>
+      <div class="resource-list" id="bookmarksList"></div>
+      <div class="btn-row" style="margin-top:14px">
+        <button class="btn-blue" id="btnExportBookmarks">📤 Exporter</button>
+        <button class="btn-danger" id="btnClearBookmarks">🗑 Vider</button>
+      </div>
+    </section>
+
+  </div>
+
+</div>
+
+<!-- MODAL PRÉVISUALISATION -->
+<div class="modal" id="modalPreview">
+  <div class="modal-box">
+    <button class="close-x" id="btnClosePreview">✕</button>
+    <h3 id="previewTitle">Aperçu</h3>
+    <div class="preview-content" id="previewContent"></div>
+  </div>
+</div>
+
+<!-- MODAL GUIDE -->
+<div class="modal" id="modalGuide">
+  <div class="modal-box">
+    <button class="close-x" id="btnCloseGuide">✕</button>
+    <h3>📖 Guide complet v4</h3>
+    <h4>Fonctionnalités principales :</h4>
+    <ul style="margin-left:20px;margin-bottom:14px;line-height:1.8">
+      <li><b>🔍 Prévisualisation</b> : Vidéo, Audio, PDF, EPUB, DjVu, TXT</li>
+      <li><b>🚀 Transfert intelligent</b> : Vers agent principal avec suivi</li>
+      <li><b>💾 Stockage automatique</b> : IndexedDB + localStorage</li>
+      <li><b>🔖 Marque-pages</b> : Comme navigateur Chrome/Firefox</li>
+      <li><b>📊 Synchronisation</b> : Bidirectionnelle agent ↔ convertisseur</li>
+    </ul>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/**
+ * ============================================================
+ * MINI-AGENT v4
+ * - Système de prévisualisation complet
+ * - Transfert intelligent vers agent principal
+ * - Gestion des statuts de transfert
+ * ============================================================
+ */
+
+(function() {
+  const DB_NAME = 'tossara_biblio_v4';
+  const STORE = 'ressources';
+  const META_KEY = 'biblio_meta_v4';
+  const BOOKMARKS_KEY = 'biblio_bookmarks_v4';
+  const TRANSFER_KEY = 'biblio_transfer_v4';
+  let _db = null;
+
+  function ouvrirDB() {
+    return new Promise((resolve, reject) => {
+      if (_db) return resolve(_db);
+      const req = indexedDB.open(DB_NAME, 2);
+      req.onupgradeneeded = e => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains(STORE)) {
+          db.createObjectStore(STORE, { keyPath: 'id' });
+        }
+      };
+      req.onsuccess = e => { _db = e.target.result; resolve(_db); };
+      req.onerror = e => reject(e.target.error);
+    });
+  }
+
+  async function putBlob(id, blob) {
+    const db = await ouvrirDB();
+    return new Promise((res, rej) => {
+      const tx = db.transaction(STORE, 'readwrite');
+      tx.objectStore(STORE).put({ id, blob });
+      tx.oncomplete = () => res();
+      tx.onerror = () => rej(tx.error);
+    });
+  }
+
+  async function getBlob(id) {
+    const db = await ouvrirDB();
+    return new Promise((res, rej) => {
+      const tx = db.transaction(STORE, 'readonly');
+      const r = tx.objectStore(STORE).get(id);
+      r.onsuccess = () => res(r.result ? r.result.blob : null);
+      r.onerror = () => rej(r.error);
+    });
+  }
+
+  async function deleteBlob(id) {
+    const db = await ouvrirDB();
+    return new Promise((res, rej) => {
+      const tx = db.transaction(STORE, 'readwrite');
+      tx.objectStore(STORE).delete(id);
+      tx.oncomplete = () => res();
+      tx.onerror = () => rej(tx.error);
+    });
+  }
+
+  function ecrireMeta(meta) {
+    const json = JSON.stringify(meta);
+    try {
+      localStorage.setItem(META_KEY, json);
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, err: err.name === 'QuotaExceededError' ? 'QUOTA' : err.message };
+    }
+  }
+
+  window.BiblioPartagee = {
+    lister() {
+      try { return JSON.parse(localStorage.getItem(META_KEY) || '[]'); }
+      catch { return []; }
+    },
+
+    async ajouter(item) {
+      const meta = this.lister();
+      const id = 'res_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+
+      const entree = {
+        id,
+        titre: item.titre || 'Sans titre',
+        type: item.type || 'media',
+        sousType: item.sousType || 'document',
+        date: new Date().toISOString(),
+        taille: item.blob ? item.blob.size : (item.data ? JSON.stringify(item.data).length : 0),
+        aBlob: !!item.blob,
+        mime: item.mime || '',
+        data: item.blob ? null : (item.data || null),
+        extra: item.extra || {},
+        transferStatus: 'pending'  // pending, transferred, failed
+      };
+
+      if (item.blob) await putBlob(id, item.blob);
+
+      meta.push(entree);
+      ecrireMeta(meta);
+      window.dispatchEvent(new CustomEvent('biblio:updated'));
+      return entree;
+    },
+
+    async recupererBlob(id) {
+      return await getBlob(id);
+    },
+
+    async supprimer(id) {
+      const meta = this.lister().filter(m => m.id !== id);
+      ecrireMeta(meta);
+      await deleteBlob(id);
+      window.dispatchEvent(new CustomEvent('biblio:updated'));
+    },
+
+    async vider() {
+      const meta = this.lister();
+      for (const m of meta) await deleteBlob(m.id);
+      try { localStorage.removeItem(META_KEY); } catch(e) {}
+      window.dispatchEvent(new CustomEvent('biblio:updated'));
+    },
+
+    updateTransferStatus(id, status) {
+      const meta = this.lister();
+      const item = meta.find(m => m.id === id);
+      if (item) {
+        item.transferStatus = status;
+        ecrireMeta(meta);
+        window.dispatchEvent(new CustomEvent('biblio:updated'));
+      }
+    }
+  };
+
+  window.BookmarksManager = {
+    lister() {
+      try { return JSON.parse(localStorage.getItem(BOOKMARKS_KEY) || '[]'); }
+      catch { return []; }
+    },
+
+    ajouter(bookmark) {
+      const list = this.lister();
+      bookmark.id = 'bm_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+      bookmark.date = new Date().toISOString();
+      list.push(bookmark);
+      localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(list));
+      return bookmark;
+    },
+
+    supprimer(id) {
+      const list = this.lister().filter(b => b.id !== id);
+      localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(list));
+    },
+
+    vider() {
+      try { localStorage.removeItem(BOOKMARKS_KEY); } catch(e) {}
+    }
+  };
+
+  console.log('✅ BiblioPartagee v4 + TransferManager chargées');
+})();
+</script>
+
+<script>
+const SURAHS = ["Al-Fatiha","Al-Baqara","Al-Imran","An-Nisa","Al-Ma'ida","Al-An'am","Al-A'raf","Al-Anfal","At-Tawba","Yunus"];
+
+const FORMATS_SUPPORT = {
+  epub: { icon: '📕', label: 'EPUB', preview: true },
+  mobi: { icon: '📕', label: 'MOBI', preview: false },
+  azw: { icon: '📕', label: 'AZW', preview: false },
+  djvu: { icon: '⛓️', label: 'DjVu', preview: true },
+  pdf: { icon: '📄', label: 'PDF', preview: true },
+  docx: { icon: '📄', label: 'DOCX', preview: false },
+  txt: { icon: '📄', label: 'TXT', preview: true },
+  mp3: { icon: '🎵', label: 'MP3', preview: true },
+  flac: { icon: '🎵', label: 'FLAC', preview: true },
+  m4a: { icon: '🎵', label: 'M4A', preview: true },
+  ogg: { icon: '🎵', label: 'OGG', preview: true },
+  mp4: { icon: '🎬', label: 'MP4', preview: true },
+  webm: { icon: '🎬', label: 'WebM', preview: true },
+  mov: { icon: '🎬', label: 'MOV', preview: true }
+};
+
+let pendingMedia = [];
+let currentTransfer = { agentURL: '', transferring: false };
+
+function fillSurahSelect(){
+  const sel = document.getElementById('selSurah');
+  SURAHS.forEach((name, i)=>{
+    const opt = document.createElement('option');
+    opt.value = i + 1;
+    opt.textContent = `${String(i+1).padStart(3,'0')} — ${name}`;
+    sel.appendChild(opt);
+  });
+}
+
+let toastTimer;
+function toast(msg, isErr=false, isSuccess=false){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.remove('err', 'success');
+  if(isErr) t.classList.add('err');
+  if(isSuccess) t.classList.add('success');
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 3200);
+}
+
+function fmtSize(b){
+  if(!b) return '—';
+  if(b < 1024) return b+' o';
+  if(b < 1048576) return (b/1024).toFixed(1)+' Ko';
+  return (b/1048576).toFixed(2)+' Mo';
+}
+
+function classify(file){
+  const n = file.name.toLowerCase();
+  for(const ext of Object.keys(FORMATS_SUPPORT)){
+    if(n.endsWith('.' + ext)) return ext;
+  }
+  return null;
+}
+
+function getFormatInfo(type){
+  return FORMATS_SUPPORT[type] || { icon: '📁', label: type.toUpperCase(), preview: false };
+}
+
+async function previewMedia(item){
+  const modal = document.getElementById('modalPreview');
+  const title = document.getElementById('previewTitle');
+  const content = document.getElementById('previewContent');
+
+  title.textContent = `${getFormatInfo(item.kind).icon} ${item.filename}`;
+  content.innerHTML = '<div style="text-align:center"><span class="spinner"></span> Chargement...</div>';
+  modal.classList.add('open');
+
+  const fmt = getFormatInfo(item.kind);
+  
+  try {
+    if(item.kind === 'mp4' || item.kind === 'webm' || item.kind === 'mov'){
+      content.innerHTML = `<video class="preview-video" controls autoplay><source src="${item.previewUrl}" type="video/${item.kind}">Votre navigateur ne supporte pas la vidéo.</video>`;
+    } 
+    else if(item.kind === 'mp3' || item.kind === 'flac' || item.kind === 'm4a' || item.kind === 'ogg'){
+      content.innerHTML = `<audio class="preview-audio" controls autoplay><source src="${item.previewUrl}" type="audio/${item.kind === 'mp3' ? 'mpeg' : item.kind}">Votre navigateur ne supporte pas l'audio.</audio>
+        <div style="text-align:center;margin-top:10px;font-size:.75rem;color:#656d76">${item.filename} • ${fmtSize(item.size)}</div>`;
+    }
+    else if(item.kind === 'pdf'){
+      content.innerHTML = `<iframe class="preview-pdf" src="${item.previewUrl}"></iframe>`;
+    }
+    else if(item.kind === 'txt'){
+      const reader = new FileReader();
+      reader.onload = e => {
+        const text = e.target.result.substring(0, 5000);
+        content.innerHTML = `<div class="preview-text">${text.replace(/</g,'&lt;')}${e.target.result.length > 5000 ? '\n\n... (tronqué)' : ''}</div>`;
+      };
+      reader.readAsText(item.file);
+    }
+    else if(item.kind === 'epub' || item.kind === 'djvu'){
+      content.innerHTML = `<div class="preview-error">
+        <p>📚 Format EPUB/DjVu détecté</p>
+        <p style="font-size:.8rem;margin-top:8px;color:#656d76">
+          Utilisez un lecteur spécialisé (Kindle Cloud Reader, DjVu.js) pour visualiser le contenu.
+        </p>
+      </div>`;
+    }
+    else {
+      content.innerHTML = `<div class="preview-error">
+        <p>📁 Prévisualisation non disponible</p>
+        <p style="font-size:.8rem;margin-top:8px">Format : ${fmt.label}</p>
+      </div>`;
+    }
+  } catch(err) {
+    content.innerHTML = `<div class="preview-error">❌ Erreur de chargement : ${err.message}</div>`;
+  }
+}
+
+async function convertSurah(num, langEdition, reciter){
+  const url = `https://api.alquran.cloud/v1/surah/${num}/editions/${reciter},${langEdition}`;
+  const res = await fetch(url);
+  if(!res.ok) throw new Error('API indisponible');
+  const data = await res.json();
+  if(data.code !== 200) throw new Error(data.status);
+  const arabic = data.data[0], trans = data.data[1];
+  const verses = arabic.ayahs.map((a, i) => ({
+    num: a.numberInSurah,
+    ar: a.text,
+    trans: trans.ayahs[i] ? trans.ayahs[i].text : '',
+    audio: a.audio || ''
+  }));
+  return {
+    type: 'quran',
+    surah: num,
+    name: SURAHS[num-1],
+    lang: langEdition.split('.')[0],
+    verses,
+    totalVerses: verses.length
+  };
+}
+
+function renderBiblio(){
+  const list = document.getElementById('biblioList');
+  const count = document.getElementById('biblioCount');
+  const items = window.BiblioPartagee.lister();
+  const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+  const filterType = document.getElementById('filterType').value;
+
+  count.textContent = items.length;
+
+  let filtered = items;
+  if(searchTerm){
+    filtered = filtered.filter(it => it.titre.toLowerCase().includes(searchTerm));
+  }
+  if(filterType){
+    filtered = filtered.filter(it => it.type === filterType || it.sousType === filterType);
+  }
+
+  if(filtered.length === 0){
+    list.innerHTML = '<div class="empty">Aucun élément.</div>';
+    return;
+  }
+
+  list.innerHTML = '';
+  filtered.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'resource-item';
+
+    let icon = '📁';
+    let badge = item.sousType || 'document';
+
+    if(item.type === 'quran'){
+      icon = '📖';
+      badge = 'quran';
+    } else {
+      const fmt = getFormatInfo(item.sousType);
+      icon = fmt.icon;
+    }
+
+    const statusClass = item.transferStatus || 'pending';
+    const statusText = { pending: '⏳ En attente', transferred: '✅ Transféré', failed: '❌ Erreur' }[statusClass] || '⏳';
+
+    div.innerHTML = `
+      <div class="ico">${icon}</div>
+      <div class="meta">
+        <div class="title">${item.titre}</div>
+        <div class="sub">${fmtSize(item.taille)} · ${item.date.split('T')[0]}</div>
+      </div>
+      <span class="badge ${badge}">${badge.toUpperCase()}</span>
+      <span class="transfer-status ${statusClass}">${statusText}</span>
+      <div class="actions">
+        ${item.type !== 'quran' ? `<button class="btn-sm" style="border:none;background:none;cursor:pointer;font-size:1rem" data-preview="${item.id}" title="Prévisualiser">🔍</button>` : ''}
+        <button class="icon-btn" data-del="${item.id}" title="Supprimer">✕</button>
+      </div>
+    `;
+    list.appendChild(div);
+  });
+
+  list.querySelectorAll('[data-preview]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = btn.dataset.preview;
+      const items = window.BiblioPartagee.lister();
+      const item = items.find(it => it.id === id);
+      if(item && item.aBlob){
+        window.BiblioPartagee.recupererBlob(id).then(blob => {
+          const previewItem = {
+            kind: item.sousType,
+            filename: item.titre,
+            size: item.taille,
+            file: new File([blob], item.titre, { type: item.mime }),
+            previewUrl: URL.createObjectURL(blob)
+          };
+          previewMedia(previewItem);
+        });
+      }
+    });
+  });
+
+  list.querySelectorAll('[data-del]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      await window.BiblioPartagee.supprimer(btn.dataset.del);
+      renderBiblio();
+      updateTransferStats();
+      toast('✕ Supprimé');
+    });
+  });
+}
+
+function handleMediaFiles(files){
+  Array.from(files).forEach(file=>{
+    const kind = classify(file);
+    if(!kind){ toast('Format non supporté : ' + file.name, true); return; }
+
+    const item = {
+      id: 'm_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+      file, kind,
+      title: file.name.replace(/\.[^.]+$/, ''),
+      filename: file.name,
+      size: file.size,
+      previewUrl: URL.createObjectURL(file)
+    };
+    pendingMedia.push(item);
+  });
+  renderPendingMedia();
+}
+
+function renderPendingMedia(){
+  const list = document.getElementById('mediaList');
+  const actions = document.getElementById('mediaActions');
+
+  if(pendingMedia.length === 0){
+    list.innerHTML = '';
+    actions.style.display = 'none';
+    return;
+  }
+  actions.style.display = 'flex';
+
+  list.innerHTML = '';
+  pendingMedia.forEach(item=>{
+    const fmt = getFormatInfo(item.kind);
+    const canPreview = fmt.preview;
+    const div = document.createElement('div');
+    div.className = 'resource-item';
+    div.innerHTML = `
+      <div class="ico">${fmt.icon}</div>
+      <div class="meta">
+        <div class="title">${item.filename}</div>
+        <input type="text" value="${item.title.replace(/"/g,'&quot;')}" data-title="${item.id}" placeholder="Titre" style="margin-top:6px;padding:6px 9px;font-size:.82rem">
+      </div>
+      <span class="badge" style="background:#e8f0ff;color:#0969da;border:1px solid #a8d8ff">${fmt.label}</span>
+      <div class="actions">
+        ${canPreview ? `<button class="btn-sm" style="border:none;background:none;cursor:pointer;font-size:1rem" data-preview-pending="${item.id}" title="Tester">🔍</button>` : ''}
+        <button class="icon-btn" data-remove="${item.id}" title="Supprimer">✕</button>
+      </div>
+    `;
+    list.appendChild(div);
+  });
+
+  list.querySelectorAll('[data-preview-pending]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = btn.dataset.previewPending;
+      const it = pendingMedia.find(m=>m.id === id);
+      if(it) previewMedia(it);
+    });
+  });
+
+  list.querySelectorAll('[data-title]').forEach(inp=>{
+    inp.addEventListener('input', ()=>{
+      const it = pendingMedia.find(m=>m.id === inp.dataset.title);
+      if(it) it.title = inp.value;
+    });
+  });
+
+  list.querySelectorAll('[data-remove]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const i = pendingMedia.findIndex(m=>m.id === btn.dataset.remove);
+      if(i >= 0){
+        URL.revokeObjectURL(pendingMedia[i].previewUrl);
+        pendingMedia.splice(i,1);
+        renderPendingMedia();
+      }
+    });
+  });
+}
+
+async function commitPendingMedia(){
+  if(pendingMedia.length === 0){ toast('Aucun fichier', true); return; }
+
+  const btn = document.getElementById('btnAddMedia');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Ajout…';
+
+  let added = 0;
+  for(const item of pendingMedia){
+    try {
+      await window.BiblioPartagee.ajouter({
+        titre:    item.title || item.filename,
+        type:     'media',
+        sousType: item.kind,
+        blob:     item.file,
+        mime:     item.file.type,
+        extra:    { filename: item.filename }
+      });
+      added++;
+    } catch(err) {
+      console.warn('Erreur :', item.filename);
+    }
+  }
+
+  pendingMedia.forEach(m => URL.revokeObjectURL(m.previewUrl));
+  pendingMedia = [];
+  renderPendingMedia();
+  renderBiblio();
+  updateTransferStats();
+
+  btn.disabled = false;
+  btn.innerHTML = '➕ Ajouter à la biblio';
+  toast(`✅ ${added} fichier(s) ajouté(s)`, false, true);
+}
+
+function updateTransferStats(){
+  const items = window.BiblioPartagee.lister();
+  const transferred = items.filter(it => it.transferStatus === 'transferred').length;
+  const pending = items.filter(it => it.transferStatus === 'pending').length;
+  const failed = items.filter(it => it.transferStatus === 'failed').length;
+
+  document.getElementById('statLocal').textContent = items.length;
+  document.getElementById('statTransferred').textContent = transferred;
+  document.getElementById('statPending').textContent = pending;
+  document.getElementById('statErrors').textContent = failed;
+}
+
+function logTransfer(msg, isError=false){
+  const log = document.getElementById('transferLog');
+  const entry = document.createElement('div');
+  entry.className = isError ? 'err' : 'ok';
+  entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  log.appendChild(entry);
+  log.scrollTop = log.scrollHeight;
+}
+
+async function transferToAgent(itemIds=null){
+  const agentURL = document.getElementById('agentURL').value;
+  if(!agentURL){ toast('URL agent requise', true); return; }
+
+  currentTransfer.transferring = true;
+  const btn = document.getElementById('btnTransferAll');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Transfert…';
+
+  logTransfer('Début du transfert vers ' + agentURL);
+
+  const items = window.BiblioPartagee.lister();
+  const toTransfer = itemIds ? items.filter(it => itemIds.includes(it.id)) : items;
+  let transferred = 0, failed = 0;
+
+  for(const item of toTransfer){
+    try {
+      let payload = {
+        id: item.id,
+        titre: item.titre,
+        type: item.type,
+        sousType: item.sousType,
+        date: item.date,
+        taille: item.taille,
+        mime: item.mime,
+        extra: item.extra,
+        data: item.data
+      };
+
+      // Si blob, le convertir en base64 pour le transfert
+      if(item.aBlob){
+        const blob = await window.BiblioPartagee.recupererBlob(item.id);
+        if(blob){
+          const reader = new FileReader();
+          payload.blobBase64 = await new Promise((resolve) => {
+            reader.onload = () => resolve(reader.result);
+            reader.readAsDataURL(blob);
+          });
+        }
+      }
+
+      const res = await fetch(agentURL + '/api/biblio/receive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if(res.ok){
+        window.BiblioPartagee.updateTransferStatus(item.id, 'transferred');
+        transferred++;
+        logTransfer(`✓ ${item.titre}`);
+      } else {
+        window.BiblioPartagee.updateTransferStatus(item.id, 'failed');
+        failed++;
+        logTransfer(`✗ ${item.titre} (${res.status})`, true);
+      }
+    } catch(err) {
+      window.BiblioPartagee.updateTransferStatus(item.id, 'failed');
+      failed++;
+      logTransfer(`✗ ${item.titre} (${err.message})`, true);
+    }
+  }
+
+  renderBiblio();
+  updateTransferStats();
+
+  btn.disabled = false;
+  btn.innerHTML = '🚀 Transférer tout';
+  currentTransfer.transferring = false;
+
+  logTransfer(`Fin : ${transferred} réussi(s), ${failed} erreur(s)`);
+  toast(`✅ ${transferred} transféré(s)${failed ? ' · ' + failed + ' erreur(s)' : ''}`, failed > 0);
+}
+
+function renderBookmarks(){
+  const list = document.getElementById('bookmarksList');
+  const bookmarks = window.BookmarksManager.lister();
+
+  if(bookmarks.length === 0){
+    list.innerHTML = '<div class="empty">Aucun marque-page.</div>';
+    return;
+  }
+
+  list.innerHTML = '';
+  bookmarks.forEach(bm=>{
+    const div = document.createElement('div');
+    div.className = 'resource-item';
+    div.innerHTML = `
+      <div class="ico">🔗</div>
+      <div class="meta">
+        <div class="title">${bm.title || 'Sans titre'}</div>
+        <div class="sub">${bm.url}</div>
+      </div>
+      <div class="actions">
+        <a href="${bm.url}" target="_blank" class="btn-sm" style="text-decoration:none">🔓 Ouvrir</a>
+        <button class="icon-btn" data-del="${bm.id}" title="Supprimer">✕</button>
+      </div>
+    `;
+    list.appendChild(div);
+  });
+
+  list.querySelectorAll('[data-del]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      window.BookmarksManager.supprimer(btn.dataset.del);
+      renderBookmarks();
+      toast('Marque-page supprimé');
+    });
+  });
+}
+
+// ONGLETS
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// CONVERSION CORAN
+document.getElementById('btnConvert').addEventListener('click', async () => {
+  const btn = document.getElementById('btnConvert');
+  const num = +document.getElementById('selSurah').value;
+  const lang = document.getElementById('selLang').value;
+  const rec = document.getElementById('selReciter').value;
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>';
+  try{
+    const item = await convertSurah(num, lang, rec);
+    await window.BiblioPartagee.ajouter({
+      titre:    `Surah ${num} — ${item.name}`,
+      type:     'quran',
+      data:     item
+    });
+    renderBiblio();
+    updateTransferStats();
+    toast(`✅ Surah ${num} ajoutée`, false, true);
+  }catch(err){
+    toast('❌ ' + err.message, true);
+  }
+  finally{
+    btn.disabled = false;
+    btn.innerHTML = '⚡ Convertir et ajouter';
+  }
+});
+
+// MÉDIAS
+const dz = document.getElementById('dropzone');
+const mediaInput = document.getElementById('mediaInput');
+dz.addEventListener('click', ()=> mediaInput.click());
+mediaInput.addEventListener('change', e=>{ if(e.target.files.length) handleMediaFiles(e.target.files); });
+dz.addEventListener('dragover', e=>{ e.preventDefault(); dz.classList.add('drag'); });
+dz.addEventListener('dragleave', e=>{ e.preventDefault(); dz.classList.remove('drag'); });
+dz.addEventListener('drop', e=>{ e.preventDefault(); dz.classList.remove('drag'); if(e.dataTransfer.files.length) handleMediaFiles(e.dataTransfer.files); });
+
+document.getElementById('btnAddMedia').addEventListener('click', commitPendingMedia);
+document.getElementById('btnClearMedia').addEventListener('click', ()=>{
+  pendingMedia.forEach(m => URL.revokeObjectURL(m.previewUrl));
+  pendingMedia = [];
+  renderPendingMedia();
+});
+
+// RECHERCHE/FILTRES
+document.getElementById('searchInput').addEventListener('input', renderBiblio);
+document.getElementById('filterType').addEventListener('change', renderBiblio);
+
+// TRANSFERT
+document.getElementById('btnTestAgent').addEventListener('click', async ()=>{
+  const url = document.getElementById('agentURL').value;
+  if(!url){ toast('URL requise', true); return; }
+
+  try{
+    const res = await fetch(url + '/health', { method: 'GET' });
+    if(res.ok){
+      toast('🔗 Agent actif', false, true);
+      logTransfer('Connexion établie avec l\'agent principal');
+    } else {
+      toast('Agent indisponible', true);
+      logTransfer('L\'agent principal ne répond pas', true);
+    }
+  }catch(err){
+    toast('Erreur connexion', true);
+    logTransfer('Impossible de se connecter à l\'agent', true);
+  }
+});
+
+document.getElementById('btnTransferAll').addEventListener('click', ()=> transferToAgent());
+
+document.getElementById('btnSyncBack').addEventListener('click', async ()=>{
+  const url = document.getElementById('agentURL').value;
+  if(!url){ toast('URL requise', true); return; }
+
+  logTransfer('Synchronisation depuis l\'agent...');
+  try{
+    const res = await fetch(url + '/api/biblio/list', { method: 'GET' });
+    if(res.ok){
+      const data = await res.json();
+      logTransfer(`Reçu ${data.length || 0} élément(s) de l'agent`);
+      toast(`Synchronisé : ${data.length || 0} élément(s)`, false, true);
+    }
+  }catch(err){
+    logTransfer('Erreur sync : ' + err.message, true);
+  }
+});
+
+// EXPORT/IMPORT
+document.getElementById('btnExport').addEventListener('click', ()=>{
+  const items = window.BiblioPartagee.lister();
+  if(items.length === 0){ toast('Biblio vide', true); return; }
+
+  const blob = new Blob([JSON.stringify(items, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'biblio-data.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('📤 Exporté');
+});
+
+document.getElementById('btnImport').addEventListener('click', ()=> document.getElementById('fileInput').click());
+document.getElementById('fileInput').addEventListener('change', e=>{
+  if(!e.target.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = async (ev)=>{
+    try{
+      const data = JSON.parse(ev.target.result);
+      const items = Array.isArray(data) ? data : [data];
+      let added = 0;
+      for(const item of items){
+        if(item.titre){
+          await window.BiblioPartagee.ajouter({
+            titre: item.titre,
+            type: item.type || 'media',
+            sousType: item.sousType,
+            data: item
+          });
+          added++;
+        }
+      }
+      renderBiblio();
+      updateTransferStats();
+      toast(`✅ ${added} importé(s)`, false, true);
+    }catch(err){
+      toast('❌ Erreur import', true);
+    }
+  };
+  reader.readAsText(e.target.files[0]);
+});
+
+document.getElementById('btnClear').addEventListener('click', async ()=>{
+  if(confirm('Vider la biblio ?')){
+    await window.BiblioPartagee.vider();
+    renderBiblio();
+    updateTransferStats();
+    toast('🗑 Biblio vidée');
+  }
+});
+
+// MARQUE-PAGES
+document.getElementById('btnAddBookmark').addEventListener('click', ()=>{
+  const url = document.getElementById('bookmarkURL').value;
+  const title = document.getElementById('bookmarkTitle').value;
+
+  if(!url){ toast('URL requise', true); return; }
+
+  try{
+    new URL(url);
+    window.BookmarksManager.ajouter({ url, title });
+    document.getElementById('bookmarkURL').value = '';
+    document.getElementById('bookmarkTitle').value = '';
+    renderBookmarks();
+    toast('🔖 Ajouté', false, true);
+  }catch(err){
+    toast('URL invalide', true);
+  }
+});
+
+document.getElementById('btnExportBookmarks').addEventListener('click', ()=>{
+  const bookmarks = window.BookmarksManager.lister();
+  if(bookmarks.length === 0){ toast('Aucun marque-page', true); return; }
+
+  const blob = new Blob([JSON.stringify(bookmarks, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'bookmarks.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('📤 Marque-pages exportés');
+});
+
+document.getElementById('btnClearBookmarks').addEventListener('click', ()=>{
+  if(confirm('Vider les marque-pages ?')){
+    window.BookmarksManager.vider();
+    renderBookmarks();
+    toast('Marque-pages vidés');
+  }
+});
+
+// MODALS
+document.getElementById('btnClosePreview').addEventListener('click', ()=>{
+  document.getElementById('modalPreview').classList.remove('open');
+  document.getElementById('previewContent').innerHTML = '';
+});
+
+document.getElementById('btnGuide').addEventListener('click', ()=> document.getElementById('modalGuide').classList.add('open'));
+document.getElementById('btnCloseGuide').addEventListener('click', ()=> document.getElementById('modalGuide').classList.remove('open'));
+
+// ÉVÉNEMENTS GLOBAUX
+window.addEventListener('biblio:updated', () => {
+  renderBiblio();
+  updateTransferStats();
+});
+
+// INIT
+fillSurahSelect();
+renderBiblio();
+renderBookmarks();
+updateTransferStats();
+logTransfer('✅ Mini-Agent Convertisseur v4 initialisé');
+</script>
+
+</body>
+</html>
